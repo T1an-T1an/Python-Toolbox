@@ -1,9 +1,9 @@
 #* <JingdaProj3>.<py>
 #*
 #* ANLY 555 <Spring 2023>
-#* Project <3>
+#* Project <4>
 #*
-#* Due on: <Mar, 23, 2023>
+#* Due on: <Apr, 14, 2023>
 #* Author(s): <Jingda Yang>
 #*
 #*
@@ -20,7 +20,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from nltk.corpus import stopwords
 from wordcloud import WordCloud
-
+import itertools
+import heapq
 
 class DataSet: # base class
     def __init__(self, filename):
@@ -380,7 +381,68 @@ class Experiment:
             print(cnfsn_matrix)
             print("\n")
 
+    # define ROC method
+    def ROC(self):
+        '''
+        Generate ROC curve for experiment
+        '''
+        print("Experiment ROC method invoked")
 
+        numClassifiers = len(self.classifiers)
+        unique_labels = np.unique(self.labels)
+
+        # iterate over each unique class label
+        for class_label in unique_labels:
+            # create binary label array for current class
+            binary_labels = np.where(self.labels == class_label, 1, 0)
+
+            # calculate true positive rates and false positive rates for each classifier
+            for i in range(numClassifiers):
+                classifier = self.classifiers[i]
+                predictedLabels = self.predictedLabelsMatrix[:, i]
+
+                # Sort labels and predictions by predicted score
+                sorted_indices = np.argsort(predictedLabels)
+                sorted_labels = binary_labels[sorted_indices]
+                sorted_predictions = predictedLabels[sorted_indices]
+
+                # initialize TPR and FPR
+                tpr = [0.0]
+                fpr = [0.0]
+                tp = 0
+                fp = 0
+                num_positive = np.sum(binary_labels == 1)
+                num_negative = np.sum(binary_labels == 0)
+
+                # create a priority queue for the thresholds
+                minheap = []
+                for idx, score in enumerate(sorted_predictions):
+                    minheap.append((1 - score, idx))
+
+                heapq.heapify(minheap)
+
+
+                # calculate TPR and FPR for each threshold
+                while minheap:
+                    threshold, idx = heapq.heappop(minheap)
+                    if sorted_labels[idx] == 1:
+                        tp += 1
+                    else:
+                        fp += 1
+
+                    tpr.append(tp / num_positive)
+                    fpr.append(fp / num_negative)
+
+                # plot ROC curve for classifier
+                label_text = f'Classifier {i+1} - Class {class_label}'
+                plt.plot(fpr, tpr, label=label_text)
+
+        # add legend and labels to plot
+        plt.legend()
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve')
+        plt.show()
 
 
 class simpleKNNClassifier(ClassifierAlgorithm):
@@ -424,3 +486,100 @@ class kdTreeKNNClassifier(ClassifierAlgorithm):
     def __init__(self):
         print("kdTreeKNNClassifier __init__ method invoked")
         super().__init__()
+
+# define class RULE
+class Rule:
+    # define constructor
+    def __init__(self, antecedent, consequent, support, confidence, lift):
+        self.antecedent = antecedent
+        self.consequent = consequent
+        self.support = support
+        self.confidence = confidence
+        self.lift = lift
+    # define __repr__ method to print rule
+    def __repr__(self):
+        return f"Rule({self.antecedent}, {self.consequent}, {self.support}, {self.confidence}, {self.lift})"
+
+# define transaction dataset class
+class TransactionDataSet(DataSet):
+    def __init__(self, filename):
+        self._data = pd.read_csv(filename)
+
+    def __readFromCSV(self, filename):
+        pass
+
+    def __load(self):
+        pass
+
+    def clean(self):
+        # implement data cleaning if needed
+        pass
+
+
+# define association rule mining class
+    def explore(self):
+        rules = self.__ARM__(supportThreshold=0.25)
+        print("Antecedent\tConsequent\tSupport\t\tConfidence\tLift")
+        print("------------------------------------------------------------")
+        for rule in rules:
+            antecedent = ", ".join(rule.antecedent)
+            consequent = ", ".join(rule.consequent)
+            support = round(rule.support, 5)
+            confidence = round(rule.confidence, 5)
+            lift = round(rule.lift, 5)
+            print(f"{antecedent}\t\t{consequent}\t\t{support}\t\t{confidence}\t\t{lift}")
+
+    # define ARM method        
+    def __ARM__(self, supportThreshold=0.25, confidenceThreshold=0.0, top_n_rules=10):
+
+        # create a list of unique items
+        def support(df, itemset):
+            return len(df[df[itemset].all(axis=1)]) / len(df)
+
+        # calculate rules and return a list of Rule objects
+        def calculate_rules(df, freq_itemsets):
+            rules = []
+            for itemset in freq_itemsets:
+                for i in range(1, len(itemset)):
+                    for antecedent in itertools.combinations(itemset, i):
+                        antecedent = set(antecedent)
+                        if isinstance(itemset, set):
+                            consequent = itemset - antecedent
+                        else:
+                            consequent = itemset.difference(frozenset(antecedent))
+
+                        support_both = support(df, itemset)
+                        support_antecedent = support(df, antecedent)
+                        confidence = support_both / support_antecedent
+                        lift = confidence / support(df, consequent)
+
+                        if confidence >= confidenceThreshold:
+                            rules.append(Rule(antecedent, consequent, support_both, confidence, lift))
+            return rules
+
+        # apriori algorithm to generate frequent itemsets
+        def apriori(df, supportThreshold):
+            items = [frozenset({item}) for item in df.columns]
+            freq_itemsets = []
+            while items:
+                new_items = []
+                for itemset in items:
+                    if support(df, itemset) >= supportThreshold:
+                        freq_itemsets.append(itemset)
+                        new_items = []
+                        for itemset in items:
+                            for item in df.columns:
+                                if item not in itemset:
+                                    new_itemset = itemset | frozenset({item})
+                                    if support(df, new_itemset) >= supportThreshold:
+                                        new_items.append(new_itemset)
+
+                items = list(set(new_items))
+            return freq_itemsets
+
+        # generate frequent itemsets and calculate rules
+        freq_itemsets = apriori(self._data, supportThreshold)
+        rules = calculate_rules(self._data, freq_itemsets)
+        rules.sort(key=lambda rule: rule.lift, reverse=True)
+
+        return rules[:top_n_rules]

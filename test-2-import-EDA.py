@@ -1,4 +1,4 @@
-from JingdaYangProj2 import QuantDataSet, QualDataSet, TimeSeriesDataSet, TextDataSet
+from python-toolbox import QuantDataSet, QualDataSet, TimeSeriesDataSet, TextDataSet
  
 '''
 After select all code and run, First please input one of them from ["Quant", "Qual", "TimeSeries", "Text"],

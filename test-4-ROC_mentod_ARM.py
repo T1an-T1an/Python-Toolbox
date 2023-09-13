@@ -1,24 +1,26 @@
-from python-toolbox import simpleKNNClassifier, ClassifierAlgorithm, Experiment
-
-
+from python-toolbox import simpleKNNClassifier, Experiment, TransactionDataSet, Rule, DataSet
 
 '''
-I have used the Iris dataset to test simpleKNNClassifier. 
+Test part a for this project.
+
+
+I have used the Iris dataset to test simpleKNNClassifier at first, 
+and use the result to test function ROC in class Experiment. 
 I prepare my data before I use it to train and test the classifier.
 First I use random package to shuffle the data and split it into training and testing sets with ratio 0.7(training) and 0.3(testing). 
 Then I use the training data and labels to train the classifier and use the test data to test the classifier. 
 In class experiment, method test() will return a numpy array of predicted labels.
 Because I prepare the data in advance, I did not put codes about preparing data in class Experiment method test().
-Finally I calculate the accuracy of the predictions and test class Experiment. 
+Finally I calculate the accuracy of the predictions and test class Experiment, then plot ROC curves. 
 Thank you so much!
 '''
-
 
 def main():
     import pandas as pd
     import numpy as np
     import random
-
+    import warnings
+    warnings.filterwarnings('ignore')
     '''
     Prepare data.
     '''
@@ -104,5 +106,30 @@ def main():
     experiment.confusionMatrix()
     experiment_2.confusionMatrix()
 
+    # Generate ROC curves
+    experiment.ROC()
+    experiment_2.ROC()
+
+
+    '''
+    Test part c for this project.
+
+    I have used the transaction dataset to test TransactionDataSet class.
+    I create a ramdom dataset with 100000 rows and 7 columns, and save it as a csv file.
+    Then I use TransactionDataSet class to read the csv file and explore the dataset.
+    Because the dataset I created is clean, so I did not use any data cleaning methods.
+    '''
+
+    # create a random dataset with 100000 rows and 7 columns
+    np.random.seed(123)
+    arr = np.random.randint(2, size=(100000, 7))
+    df = pd.DataFrame(arr, columns=['Item1', 'Item2', 'Item3', 'Item4', 'Item5', 'Item6', 'Item7'])
+
+    # save the dataset as a csv file
+    df.to_csv('example.csv', index=False)
+
+    # use TransactionDataSet class to read the csv file and explore the dataset
+    transaction_data = TransactionDataSet('example.csv')
+    transaction_data.explore()
 if __name__ == "__main__":
     main()
